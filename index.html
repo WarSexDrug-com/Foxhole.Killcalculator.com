@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FIRELINE // Foxhole indirect fire calculator</title>
+  <meta name="description" content="Interactive Foxhole indirect fire distance and azimuth calculator.">
+  <style>
+    :root {
+      --ink: #17211d;
+      --muted: #66736d;
+      --paper: #f3f0e7;
+      --panel: #fbfaf5;
+      --line: #d7d6c9;
+      --olive: #66734a;
+      --olive-dark: #3d4b31;
+      --signal: #d15f3d;
+      --signal-dark: #9b3f2a;
+      --gold: #d2a940;
+      --shadow: 0 18px 44px rgba(45, 53, 39, .12);
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; color: var(--ink); background: var(--paper); font-family: Georgia, 'Times New Roman', serif; }
+    button, select { font: inherit; }
+    .app-shell { min-height: 100vh; display: grid; grid-template-columns: minmax(0, 1fr) 370px; }
+    .main { min-width: 0; padding: 30px clamp(20px, 4vw, 58px) 42px; }
+    .eyebrow { margin: 0 0 8px; color: var(--signal-dark); font: 700 11px/1.2 'Trebuchet MS', sans-serif; letter-spacing: .15em; }
+    h1 { margin: 0; font-size: clamp(33px, 4vw, 56px); letter-spacing: -.03em; line-height: .98; max-width: 680px; }
+    .intro { max-width: 560px; margin: 17px 0 25px; color: var(--muted); font: 15px/1.55 'Trebuchet MS', sans-serif; }
+    .map-wrap { position: relative; overflow: hidden; border: 1px solid #a7aa96; border-radius: 5px; background: #7a8066; box-shadow: var(--shadow); }
+    .map-wrap::before { content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none; background: linear-gradient(135deg, rgba(18, 36, 24, .45), rgba(203, 184, 118, .13) 45%, rgba(23, 35, 20, .48)); }
+    #map { display: block; width: 100%; aspect-ratio: 1.55 / 1; min-height: 390px; cursor: crosshair; background: #737b64 url('https://foxhole.wiki.gg/images/thumb/World_Map.png/2560px-World_Map.png') center / cover no-repeat; filter: saturate(.75) sepia(.18); }
+    .map-grid { position: absolute; inset: 0; z-index: 2; pointer-events: none; background-image: linear-gradient(rgba(245,239,198,.22) 1px, transparent 1px), linear-gradient(90deg, rgba(245,239,198,.22) 1px, transparent 1px); background-size: 10% 10%; }
+    .map-label { position: absolute; z-index: 3; color: rgba(250, 244, 205, .72); font: 700 10px 'Trebuchet MS', sans-serif; letter-spacing: .1em; pointer-events: none; text-shadow: 0 1px 3px #26301e; }
+    .map-label.nw { top: 12px; left: 13px; } .map-label.se { right: 13px; bottom: 12px; }
+    .zoom-controls { position: absolute; z-index: 6; right: 12px; top: 12px; display: grid; gap: 4px; }
+    .zoom-controls button { width: 32px; height: 32px; border: 1px solid rgba(245,239,198,.55); border-radius: 3px; color: #f5efd0; background: rgba(26, 39, 28, .86); cursor: pointer; font: 700 18px/1 'Trebuchet MS', sans-serif; }
+    .zoom-controls button:hover { background: var(--signal-dark); }
+    .zoom-level { color: #f5efd0; font: 700 9px 'Trebuchet MS', sans-serif; text-align: center; text-shadow: 0 1px 3px #26301e; }
+    #plot { position: absolute; top: 0; left: 0; width: 100%; height: 0; z-index: 4; pointer-events: none; }
+    .map-hint { position: absolute; z-index: 5; top: 16px; left: 50%; transform: translateX(-50%); padding: 8px 12px; color: #f5efd0; background: rgba(26, 39, 28, .8); border-radius: 3px; font: 700 11px 'Trebuchet MS', sans-serif; letter-spacing: .05em; white-space: nowrap; }
+    .map-footer { display: flex; justify-content: space-between; gap: 12px; padding: 11px 14px; background: #273529; color: #dce1c9; font: 11px 'Trebuchet MS', sans-serif; }
+    .map-footer strong { color: #fff0b4; }
+    .facility-controls { margin-top: 10px; }
+    .facility-filters { display: flex; flex-wrap: wrap; gap: 5px; }
+    .facility-filter { padding: 7px 9px; border: 1px solid rgba(245,239,198,.35); border-radius: 3px; color: #dce1c9; background: transparent; cursor: pointer; font: 700 10px 'Trebuchet MS', sans-serif; }
+    .facility-filter.active { color: #273529; background: #dce1c9; }
+    .facility-key { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; color: #bac6aa; font: 10px 'Trebuchet MS', sans-serif; }
+    .facility-key span::before { content: ''; display: inline-block; width: 7px; height: 7px; margin-right: 4px; border-radius: 50%; background: currentColor; }
+    .facility-key .town { color: #e5bd55; } .facility-key .port { color: #73b5bb; } .facility-key .storage { color: #d88768; } .facility-key .logistics { color: #a8b879; } .facility-key .airfield { color: #d5a0c4; }
+    .sidebar { padding: 30px 25px; border-left: 1px solid var(--line); background: var(--panel); }
+    .brand { display: flex; align-items: center; gap: 11px; margin-bottom: 33px; font: 700 12px 'Trebuchet MS', sans-serif; letter-spacing: .12em; }
+    .brand-mark { display: grid; place-items: center; width: 32px; height: 32px; color: #f4edc5; background: var(--olive-dark); border-radius: 50%; font: 700 16px Georgia, serif; }
+    .section-title { margin: 0 0 12px; font: 700 11px 'Trebuchet MS', sans-serif; letter-spacing: .13em; text-transform: uppercase; color: var(--muted); }
+    .field { margin-bottom: 24px; }
+    label { display: block; margin-bottom: 8px; font: 700 13px 'Trebuchet MS', sans-serif; }
+    select { width: 100%; padding: 12px 13px; border: 1px solid #bfc3ae; border-radius: 3px; color: var(--ink); background: #f6f5ed; }
+    .weapon-meta { display: flex; justify-content: space-between; margin-top: 8px; color: var(--muted); font: 11px 'Trebuchet MS', sans-serif; }
+    .weapon-meta a { color: var(--signal-dark); text-decoration: none; font-weight: 700; }
+    .mode-row { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+    .mode { padding: 11px 6px; border: 1px solid var(--line); border-radius: 3px; background: transparent; color: var(--muted); cursor: pointer; font: 700 11px 'Trebuchet MS', sans-serif; }
+    .mode.active { border-color: var(--olive); color: #fff; background: var(--olive); }
+    .readout { margin: 28px 0; padding: 18px 16px; background: var(--ink); color: #f8f2d9; }
+    .readout-kicker { margin: 0 0 14px; color: #c7d09e; font: 700 10px 'Trebuchet MS', sans-serif; letter-spacing: .15em; }
+    .distance { margin: 0; font-size: 45px; line-height: 1; letter-spacing: -.04em; }
+    .distance span { color: #bdc6a0; font-size: 15px; letter-spacing: 0; }
+    .solution-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 8px; margin-top: 18px; }
+    .metric-label { display: block; margin-bottom: 3px; color: #9ea98a; font: 10px 'Trebuchet MS', sans-serif; text-transform: uppercase; letter-spacing: .08em; }
+    .metric-value { font: 700 18px Georgia, serif; }
+    .status { margin-top: 17px; padding-top: 13px; border-top: 1px solid #455442; color: #d7debf; font: 12px/1.4 'Trebuchet MS', sans-serif; }
+    .status.invalid { color: #f3a58c; }
+    .actions { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+    .primary, .clear { padding: 12px; border: 0; border-radius: 3px; cursor: pointer; font: 700 11px 'Trebuchet MS', sans-serif; letter-spacing: .04em; }
+    .primary { color: #fff9de; background: var(--signal); } .primary:hover { background: var(--signal-dark); }
+    .clear { width: 45px; color: var(--ink); background: #e4e3d8; }
+    .note { margin-top: 28px; padding-top: 16px; border-top: 1px solid var(--line); color: var(--muted); font: 11px/1.55 'Trebuchet MS', sans-serif; }
+    .note a { color: var(--signal-dark); font-weight: 700; }
+    @media (max-width: 900px) { .app-shell { grid-template-columns: 1fr; } .sidebar { border-top: 1px solid var(--line); border-left: 0; } .main { padding-bottom: 26px; } }
+    @media (max-width: 520px) { #map { min-height: 290px; } .map-hint { top: 10px; font-size: 10px; } .map-footer { flex-direction: column; gap: 4px; } .sidebar { padding: 25px 20px; } }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <main class="main">
+      <p class="eyebrow">FIELD MANUAL / INDIRECT FIRE</p>
+      <h1>Put steel on target.</h1>
+      <p class="intro">Plot your battery and target on a Foxhole world map. FIRELINE calculates the direct distance and compass azimuth, then checks the shot against the selected weapon's reference envelope.</p>
+      <div class="map-wrap">
+        <canvas id="map" aria-label="Interactive Foxhole map. Click to place battery and target."></canvas>
+        <div class="map-grid"></div><span class="map-label nw">NORTHWEST SECTOR</span><span class="map-label se">SOUTHEAST SECTOR</span>
+        <div class="map-hint" id="mapHint">CLICK TO PLACE BATTERY</div><canvas id="plot"></canvas>
+        <div class="zoom-controls" aria-label="Map zoom controls"><button id="zoomIn" title="Zoom in" aria-label="Zoom in">+</button><button id="zoomOut" title="Zoom out" aria-label="Zoom out">-</button><button id="zoomReset" title="Reset zoom" aria-label="Reset zoom">1:1</button><span class="zoom-level" id="zoomLevel">100%</span></div>
+        <div class="map-footer"><span>MAP SCALE <strong>1 GRID SQUARE = 1,000 M</strong></span><span id="pointsReadout">BATTERY -- &nbsp; TARGET --</span><div class="facility-controls"><div class="facility-filters"><button class="facility-filter active" data-facility="all">ALL</button><button class="facility-filter" data-facility="town">TOWN HALLS</button><button class="facility-filter" data-facility="port">SEAPORTS</button><button class="facility-filter" data-facility="storage">STORAGE</button><button class="facility-filter" data-facility="airfield">AIRFIELDS</button><button class="facility-filter" data-facility="logistics">LOGISTICS</button></div><div class="facility-key"><span class="town">Town Hall</span><span class="port">Seaport</span><span class="storage">Storage Depot</span><span class="airfield">Airfield / Runway</span><span class="logistics">Other logistics</span></div></div></div>
+      </div>
+    </main>
+    <aside class="sidebar">
+      <div class="brand"><span class="brand-mark">F</span><span>FIRELINE CALCULATOR</span></div>
+      <div class="field"><p class="section-title">01 / Weapon profile</p><label for="weapon">Indirect weapon</label><select id="weapon"></select><div class="weapon-meta"><span id="weaponRange">--</span><a id="wikiLink" href="https://foxhole.wiki.gg/wiki/Artillery" target="_blank" rel="noreferrer">WIKI REFERENCE &rarr;</a></div></div>
+      <div class="field"><p class="section-title">02 / Plot mode</p><div class="mode-row"><button class="mode active" data-mode="battery">BATTERY FIRST</button><button class="mode" data-mode="target">TARGET FIRST</button></div></div>
+      <section class="readout" aria-live="polite"><p class="readout-kicker">FIRE SOLUTION</p><p class="distance" id="distance">-- <span>meters</span></p><div class="solution-grid"><div><span class="metric-label">Azimuth</span><strong class="metric-value" id="azimuth">--</strong></div><div><span class="metric-label">Reverse bearing</span><strong class="metric-value" id="reverse">--</strong></div><div><span class="metric-label">Grid distance</span><strong class="metric-value" id="gridDistance">--</strong></div><div><span class="metric-label">Map points</span><strong class="metric-value" id="pointStatus">0 / 2</strong></div></div><div class="status" id="status">Place two points to calculate a firing solution.</div></section>
+      <div class="actions"><button class="primary" id="copy">COPY FIRE SOLUTION</button><button class="clear" id="clear" title="Clear map points" aria-label="Clear map points">X</button></div>
+      <p class="note">Reference profiles are intended for range planning. Confirm current values, wind, elevation, dispersion, and map scale in-game. Ballistics reference: <a href="https://foxhole.wiki.gg/" target="_blank" rel="noreferrer">Foxhole Wiki</a>.</p>
+    </aside>
+  </div>
+  <script>
+    const profiles = {
+      '120mm Field Artillery': { min: 100, max: 300, wiki: 'https://foxhole.wiki.gg/wiki/120mm_Field_Artillery' },
+      '150mm Field Artillery': { min: 100, max: 350, wiki: 'https://foxhole.wiki.gg/wiki/150mm_Field_Artillery' },
+      '120mm Mortar': { min: 35, max: 100, wiki: 'https://foxhole.wiki.gg/wiki/120mm_Mortar' },
+      'Storm Cannon': { min: 400, max: 1000, wiki: 'https://foxhole.wiki.gg/wiki/Storm_Cannon' }
+    };
+    const landmarks = [
+      { name: 'Fisherman\'s Row', x: .19, y: .29 }, { name: 'Westgate', x: .36, y: .39 },
+      { name: 'Origin', x: .58, y: .46 }, { name: 'Callum\'s Cape', x: .76, y: .25 },
+      { name: 'The Oarbreaker Isles', x: .79, y: .70 }, { name: 'Farranac Coast', x: .31, y: .68 }
+    ];
+    const facilities = [
+      { name: 'Iron Junction TH', type: 'town', x: .16, y: .18 }, { name: 'Jade Cove TH', type: 'town', x: .30, y: .23 },
+      { name: 'Abandoned Ward TH', type: 'town', x: .45, y: .27 }, { name: 'The Foundry TH', type: 'town', x: .61, y: .22 },
+      { name: 'Kirknell TH', type: 'town', x: .78, y: .18 }, { name: 'Saltbrook Channel TH', type: 'town', x: .87, y: .37 },
+      { name: 'Blemish TH', type: 'town', x: .22, y: .48 }, { name: 'Longstone TH', type: 'town', x: .43, y: .52 },
+      { name: 'Mercy\'s Wish TH', type: 'town', x: .65, y: .57 }, { name: 'Lathair TH', type: 'town', x: .83, y: .53 },
+      { name: 'Port of Rime', type: 'port', x: .11, y: .32 }, { name: 'Jade Cove Seaport', type: 'port', x: .29, y: .35 },
+      { name: 'Westgate Seaport', type: 'port', x: .38, y: .44 }, { name: 'The Baths Seaport', type: 'port', x: .56, y: .68 },
+      { name: 'Mercy\'s Wish Seaport', type: 'port', x: .71, y: .76 }, { name: 'Saltbrook Seaport', type: 'port', x: .91, y: .42 },
+      { name: 'Blemish Storage Depot', type: 'storage', x: .25, y: .52 }, { name: 'Westgate Storage Depot', type: 'storage', x: .39, y: .48 },
+      { name: 'Origin Storage Depot', type: 'storage', x: .59, y: .51 }, { name: 'Lathair Storage Depot', type: 'storage', x: .81, y: .57 },
+      { name: 'Fisherman\'s Row Refinery', type: 'logistics', x: .18, y: .34 }, { name: 'Westgate Factory', type: 'logistics', x: .34, y: .42 },
+      { name: 'Origin Construction Yard', type: 'logistics', x: .55, y: .48 }, { name: 'Callum\'s Cape Shipyard', type: 'logistics', x: .74, y: .29 },
+      { name: 'Warden North Runway', type: 'airfield', side: 'warden', x: .24, y: .14 }, { name: 'Warden Central Runway', type: 'airfield', side: 'warden', x: .46, y: .19 },
+      { name: 'Warden South Airstrip', type: 'airfield', side: 'warden', x: .66, y: .32 }, { name: 'Colonial North Airstrip', type: 'airfield', side: 'colonial', x: .36, y: .76 },
+      { name: 'Colonial Central Runway', type: 'airfield', side: 'colonial', x: .57, y: .82 }, { name: 'Colonial East Runway', type: 'airfield', side: 'colonial', x: .86, y: .67 }
+    ];
+    const map = document.querySelector('#map'), plot = document.querySelector('#plot'), ctx = plot.getContext('2d');
+    const weapon = document.querySelector('#weapon'), pointsReadout = document.querySelector('#pointsReadout'), mapHint = document.querySelector('#mapHint');
+    const state = { points: [], mode: 'battery', zoom: 1, facilityFilter: 'all' };
+    Object.keys(profiles).forEach(name => weapon.add(new Option(name, name)));
+    weapon.value = '120mm Field Artillery';
+    function resize() { const rect = map.getBoundingClientRect(); const ratio = window.devicePixelRatio || 1; map.width = rect.width * ratio; map.height = rect.height * ratio; plot.width = rect.width * ratio; plot.height = rect.height * ratio; plot.style.height = `${rect.height}px`; ctx.setTransform(ratio, 0, 0, ratio, 0, 0); draw(); }
+    function mapPoint(event) { const rect = map.getBoundingClientRect(); const x = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width)), y = Math.max(0, Math.min(1, (event.clientY - rect.top) / rect.height)); return { x: .5 + (x - .5) / state.zoom, y: .5 + (y - .5) / state.zoom }; }
+    function bearing(a, b) { return (Math.atan2(b.x - a.x, -(b.y - a.y)) * 180 / Math.PI + 360) % 360; }
+    function project(point) { return { x: map.clientWidth * (.5 + (point.x - .5) * state.zoom), y: map.clientHeight * (.5 + (point.y - .5) * state.zoom) }; }
+    function drawFacilities() { const w = map.clientWidth, h = map.clientHeight; const colors = { town: '#e5bd55', port: '#73b5bb', storage: '#d88768', logistics: '#a8b879' }; facilities.filter(facility => state.facilityFilter === 'all' || facility.type === state.facilityFilter).forEach(facility => { const projected = project(facility); if (projected.x < -130 || projected.x > w + 130 || projected.y < -20 || projected.y > h + 20) return; ctx.beginPath(); ctx.arc(projected.x, projected.y, 5, 0, Math.PI * 2); ctx.fillStyle = facility.type === 'airfield' ? facility.side === 'warden' ? '#9bb7d5' : '#d5a0c4' : colors[facility.type]; ctx.fill(); ctx.lineWidth = 1.5; ctx.strokeStyle = '#1e2b21'; ctx.stroke(); if (state.zoom >= 1.5) { ctx.fillStyle = '#fff8d5'; ctx.textAlign = 'left'; ctx.fillText(facility.name.toUpperCase(), projected.x + 8, projected.y); } }); }
+    function draw() { const w = map.clientWidth, h = map.clientHeight; ctx.clearRect(0, 0, w, h); ctx.font = '700 10px Trebuchet MS'; ctx.textBaseline = 'middle'; landmarks.forEach(landmark => { const projected = project(landmark); if (projected.x < -80 || projected.x > w + 80 || projected.y < -20 || projected.y > h + 20) return; ctx.beginPath(); ctx.arc(projected.x, projected.y, 4, 0, Math.PI * 2); ctx.fillStyle = '#e6dca4'; ctx.fill(); ctx.lineWidth = 1; ctx.strokeStyle = '#283729'; ctx.stroke(); ctx.fillStyle = 'rgba(255, 248, 213, .82)'; ctx.textAlign = 'left'; ctx.fillText(landmark.name.toUpperCase(), projected.x + 8, projected.y); }); drawFacilities(); if (!state.points.length) return; if (state.points.length === 2) { const [a,b] = state.points, start = project(a), end = project(b); ctx.setLineDash([8, 6]); ctx.lineWidth = 2; ctx.strokeStyle = '#f2d478'; ctx.beginPath(); ctx.moveTo(start.x,start.y); ctx.lineTo(end.x,end.y); ctx.stroke(); ctx.setLineDash([]); } state.points.forEach((point, index) => { const projected = project(point); ctx.beginPath(); ctx.arc(projected.x, projected.y, 9, 0, Math.PI * 2); ctx.fillStyle = index === 0 ? '#d15f3d' : '#d2a940'; ctx.fill(); ctx.lineWidth = 3; ctx.strokeStyle = '#fff8d5'; ctx.stroke(); ctx.fillStyle = '#182219'; ctx.font = '700 10px Trebuchet MS'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(index === 0 ? 'B' : 'T', projected.x, projected.y + .5); }); }
+    function updateZoom() { map.style.backgroundSize = `${state.zoom * 100}% auto`; document.querySelector('#zoomLevel').textContent = `${Math.round(state.zoom * 100)}%`; draw(); }
+    function update() { const profile = profiles[weapon.value]; document.querySelector('#weaponRange').textContent = `${profile.min} - ${profile.max} m reference range`; document.querySelector('#wikiLink').href = profile.wiki; pointsReadout.textContent = `BATTERY ${state.points[0] ? 'SET' : '--'}   TARGET ${state.points[1] ? 'SET' : '--'}`; document.querySelector('#pointStatus').textContent = `${state.points.length} / 2`; if (state.points.length < 2) { mapHint.textContent = state.points.length ? 'CLICK TO PLACE TARGET' : `CLICK TO PLACE ${state.mode.toUpperCase()}`; return; } const [a,b] = state.points; const dx = b.x - a.x, dy = b.y - a.y; const gridDistance = Math.sqrt(dx * dx + dy * dy) * 10; const meters = Math.round(gridDistance * 1000); const az = Math.round(bearing(a,b)); document.querySelector('#distance').innerHTML = `${meters.toLocaleString()} <span>meters</span>`; document.querySelector('#azimuth').textContent = `${String(az).padStart(3,'0')} deg`; document.querySelector('#reverse').textContent = `${String((az + 180) % 360).padStart(3,'0')} deg`; document.querySelector('#gridDistance').textContent = gridDistance.toFixed(2); const status = document.querySelector('#status'); const inRange = meters >= profile.min && meters <= profile.max; status.className = `status ${inRange ? '' : 'invalid'}`; status.textContent = inRange ? 'IN RANGE / Solution is inside the reference envelope.' : meters < profile.min ? `TOO CLOSE / Minimum reference range is ${profile.min} m.` : `OUT OF RANGE / Maximum reference range is ${profile.max} m.`; mapHint.textContent = 'SOLUTION LOCKED / CLICK TO RESET'; }
+    map.addEventListener('click', event => { const point = mapPoint(event); if (state.points.length >= 2) state.points = []; if (state.points.length === 1 && state.mode === 'target') state.points.unshift(point); else state.points.push(point); draw(); update(); });
+    document.querySelectorAll('.mode').forEach(button => button.addEventListener('click', () => { document.querySelectorAll('.mode').forEach(item => item.classList.remove('active')); button.classList.add('active'); state.mode = button.dataset.mode; state.points = []; draw(); update(); }));
+    weapon.addEventListener('change', update); document.querySelector('#clear').addEventListener('click', () => { state.points = []; draw(); update(); });
+    document.querySelector('#zoomIn').addEventListener('click', () => { state.zoom = Math.min(5, +(state.zoom + .25).toFixed(2)); updateZoom(); }); document.querySelector('#zoomOut').addEventListener('click', () => { state.zoom = Math.max(1, +(state.zoom - .25).toFixed(2)); updateZoom(); }); document.querySelector('#zoomReset').addEventListener('click', () => { state.zoom = 1; updateZoom(); }); map.addEventListener('wheel', event => { event.preventDefault(); state.zoom = Math.min(5, Math.max(1, +(state.zoom + (event.deltaY < 0 ? .1 : -.1)).toFixed(2))); updateZoom(); }, { passive: false });
+    document.querySelectorAll('.facility-filter').forEach(button => button.addEventListener('click', () => { document.querySelectorAll('.facility-filter').forEach(item => item.classList.remove('active')); button.classList.add('active'); state.facilityFilter = button.dataset.facility; draw(); }));
+    document.querySelector('#copy').addEventListener('click', async () => { const text = document.querySelector('#distance').textContent.trim() + ' | AZ ' + document.querySelector('#azimuth').textContent + ' | ' + weapon.value; try { await navigator.clipboard.writeText(text); document.querySelector('#copy').textContent = 'COPIED'; setTimeout(() => document.querySelector('#copy').textContent = 'COPY FIRE SOLUTION', 1200); } catch { document.querySelector('#copy').textContent = 'SELECT SOLUTION'; } });
+    window.addEventListener('resize', resize); resize(); updateZoom(); update();
+  </script>
+</body>
+</html>
