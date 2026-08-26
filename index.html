@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>FIRELINE // Foxhole indirect fire calculator</title>
+  <title>Foxhole Kill Calculator</title>
   <meta name="description" content="Interactive Foxhole indirect fire distance and azimuth calculator.">
   <style>
     :root {
@@ -84,7 +84,7 @@
     <main class="main">
       <p class="eyebrow">FIELD MANUAL / INDIRECT FIRE</p>
       <h1>Put steel on target.</h1>
-      <p class="intro">Plot your battery and target on a Foxhole world map. FIRELINE calculates the direct distance and compass azimuth, then checks the shot against the selected weapon's reference envelope.</p>
+      <p class="intro">Plot your battery and target on a Foxhole world map. Foxhole Kill Calculator calculates the direct distance and compass azimuth, then checks the shot against the selected weapon's reference envelope.</p>
       <div class="map-wrap">
         <canvas id="map" aria-label="Interactive Foxhole map. Click to place battery and target."></canvas>
         <div class="map-grid"></div><span class="map-label nw">NORTHWEST SECTOR</span><span class="map-label se">SOUTHEAST SECTOR</span>
@@ -94,7 +94,7 @@
       </div>
     </main>
     <aside class="sidebar">
-      <div class="brand"><span class="brand-mark">F</span><span>FIRELINE CALCULATOR</span></div>
+      <div class="brand"><span class="brand-mark">F</span><span>FOXHOLE KILL CALCULATOR</span></div>
       <div class="field"><p class="section-title">01 / Weapon profile</p><label for="weapon">Indirect weapon</label><select id="weapon"></select><div class="weapon-meta"><span id="weaponRange">--</span><a id="wikiLink" href="https://foxhole.wiki.gg/wiki/Artillery" target="_blank" rel="noreferrer">WIKI REFERENCE &rarr;</a></div></div>
       <div class="field"><p class="section-title">02 / Plot mode</p><div class="mode-row"><button class="mode active" data-mode="battery">BATTERY FIRST</button><button class="mode" data-mode="target">TARGET FIRST</button></div></div>
       <section class="readout" aria-live="polite"><p class="readout-kicker">FIRE SOLUTION</p><p class="distance" id="distance">-- <span>meters</span></p><div class="solution-grid"><div><span class="metric-label">Azimuth</span><strong class="metric-value" id="azimuth">--</strong></div><div><span class="metric-label">Reverse bearing</span><strong class="metric-value" id="reverse">--</strong></div><div><span class="metric-label">Grid distance</span><strong class="metric-value" id="gridDistance">--</strong></div><div><span class="metric-label">Map points</span><strong class="metric-value" id="pointStatus">0 / 2</strong></div></div><div class="status" id="status">Place two points to calculate a firing solution.</div></section>
