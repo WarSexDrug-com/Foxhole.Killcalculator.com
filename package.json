@@ -1,0 +1,9 @@
+{
+  "name": "foxhole-kill-calculator",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Interactive Foxhole indirect-fire distance and azimuth calculator.",
+  "scripts": {
+    "start": "npx serve ."
+  }
+}
